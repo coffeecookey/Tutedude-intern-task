@@ -1,14 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { initRenderer } from '../core/Renderer';
 import { initInput, getVelocity } from '../core/InputHandler';
+import { fetchMapData, loadMap } from '../core/MapLoader';
 import { applyCamera } from '../core/Camera';
 import Player from '../entities/Player';
 import useGameStore from '../state/useGameStore';
 import {
-  connect, emitJoin, emitMove,
+  connect, emitJoin, emitMove, disconnect,
   onWorldSnapshot, onWorldState, onPlayerJoined, onPlayerLeft,
 } from '../network/SocketClient';
-import { MAP_BOUNDS } from '../../../server/src/config/constants';
+const MAP_BOUNDS = { width: 2000, height: 2000 };
 
 // clamp is a utility function that restricts a value v to be within the range defined by min and max.
 // It uses Math.min and Math.max to ensure that v does not go below min or above max, effectively clamping it within the specified range.
@@ -20,7 +21,7 @@ export default function GameCanvas({ playerName }) {
 
   // stateRef is a mutable reference that holds the current state of the game, 
   // including the local player's ID, a Map of all players, and the local player's current x and y coordinates.
-  const stateRef = useRef({ localId: null, players: new Map(), localX: 0, localY: 0, lastTick: -1 });
+  const stateRef = useRef({ localId: null, players: new Map(), localX: 0, localY: 0, lastTick: -1, rooms: [] });
 
   // We extract the setLocalPlayer, addPlayer, and removePlayer functions from the game store 
   const { setLocalPlayer, addPlayer, removePlayer } = useGameStore.getState();
@@ -31,6 +32,9 @@ export default function GameCanvas({ playerName }) {
     const app = initRenderer(canvasRef.current);
     const stage = app.stage;
     initInput();
+    fetchMapData().then((roomsData) => {
+      stateRef.current.rooms = loadMap(stage, roomsData);
+    });
     connect();
     emitJoin(playerName);
 
@@ -64,6 +68,7 @@ export default function GameCanvas({ playerName }) {
         if (isLocal) {
           stateRef.current.localX = data.x;
           stateRef.current.localY = data.y;
+          console.log('[Snapshot] localX:', data.x, 'localY:', data.y);
           setLocalPlayer({ userId, x: data.x, y: data.y, name: data.name });
         } 
         // If the player is a remote player, we add them to the game store's remotePlayers Map using the addPlayer function.
@@ -108,9 +113,12 @@ export default function GameCanvas({ playerName }) {
       const { localId, players } = stateRef.current;
       if (localId) {
         const { vx, vy } = getVelocity();
-        stateRef.current.localX = clamp(stateRef.current.localX + vx, 0, MAP_BOUNDS.width);
-        stateRef.current.localY = clamp(stateRef.current.localY + vy, 0, MAP_BOUNDS.height);
-        emitMove(stateRef.current.localX, stateRef.current.localY);
+        const prevX = stateRef.current.localX;
+        const prevY = stateRef.current.localY;
+        stateRef.current.localX = clamp(prevX + vx, 0, MAP_BOUNDS.width);
+        stateRef.current.localY = clamp(prevY + vy, 0, MAP_BOUNDS.height);
+        if (stateRef.current.localX !== prevX || stateRef.current.localY !== prevY)
+          emitMove(stateRef.current.localX, stateRef.current.localY);
         const lp = players.get(localId);
         if (lp) lp.update(stateRef.current.localX, stateRef.current.localY);
         applyCamera(stage, stateRef.current.localX, stateRef.current.localY);
@@ -123,6 +131,7 @@ export default function GameCanvas({ playerName }) {
     // also destroys the PIXI application to free up resources.
     return () => {
       unsubs.forEach((u) => u());
+      disconnect();
       app.destroy(false, { children: true });
     };
   }, []);

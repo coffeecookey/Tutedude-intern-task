@@ -7,6 +7,13 @@ const theme = {
   remotePlayer: 0xff6b6b,
   playerRadius: 20,
 
+  // Rooms
+  roomFill: 0x111133,
+  roomStroke: 0x3344aa,
+  roomStrokeWidth: 2,
+  roomLabelColor: 0x8899ff,
+  roomLabelFontSize: 14,
+
   // Labels
   labelColor: 0xffffff,
   labelFontSize: 12,

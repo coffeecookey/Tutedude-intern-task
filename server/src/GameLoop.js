@@ -1,4 +1,5 @@
 const { getAll } = require('./managers/WorldStateManager');
+const { runProximity } = require('./managers/ProximityEngine');
 const { TICK_RATE } = require('./config/constants');
 
 let tick = 0;
@@ -9,6 +10,7 @@ const startGameLoop = (io) => {
     tick++;
     const players = getAll();
     if (Object.keys(players).length === 0) return;
+    runProximity(io);
     io.emit('world:state', { tick, players });
   }, TICK_RATE);
 };

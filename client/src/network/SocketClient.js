@@ -1,10 +1,8 @@
 import { io } from 'socket.io-client';
 
 let socket = null;
-// lastEmit is used to throttle the frequency of 'player:move' events emitted to the server to prevent spamming updates when the player is moving rapidly.
 let lastEmit = 0;
-// lastJoinedName is used to store the name of the player who joined, so that if the socket disconnects and reconnects, it can automatically rejoin with the same name.
-let lastJoinedName = null;
+let hasJoined = false;
 
 // The connect function establishes a new socket connection to the server.
 const connect = () => {
@@ -17,11 +15,9 @@ const connect = () => {
   // Set up event listeners for the socket connection to handle connection, disconnection, and connection errors.
   socket.on('connect', () => {
     console.log('Socket connected:', socket.id);
-    // If there was a previously joined name, automatically emit a 'user:join' event to rejoin the game with the same name after reconnecting.
-    if (lastJoinedName) socket.emit('user:join', { name: lastJoinedName });
   });
   // Log disconnection reasons and connection errors for debugging purposes.
-  socket.on('disconnect', (reason) => console.log('Socket disconnected:', reason));
+  socket.on('disconnect', (reason) => { hasJoined = false; console.log('Socket disconnected:', reason); });
   socket.on('connect_error', (err) => console.error('Connection error:', err.message));
 
   return socket;
@@ -31,7 +27,8 @@ const connect = () => {
 // It emits a 'user:join' event to the server with the player's name.
 const emitJoin = (name) => {
   if (!socket) return console.warn('emitJoin: no socket');
-  lastJoinedName = name;
+  if (hasJoined) return;
+  hasJoined = true;
   socket.emit('user:join', { name });
 };
 
@@ -62,6 +59,6 @@ const onPlayerLeft    = (cb) => _on('player:left', cb);
 const onConnect       = (cb) => _on('connect', cb);
 const onDisconnect    = (cb) => _on('disconnect', cb);
 
-const disconnect = () => { socket?.disconnect(); };
+const disconnect = () => { hasJoined = false; socket?.disconnect(); socket = null; };
 
 export { connect, emitJoin, emitMove, onWorldSnapshot, onWorldState, onPlayerJoined, onPlayerLeft, onConnect, onDisconnect, disconnect };

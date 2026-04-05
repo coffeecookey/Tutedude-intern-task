@@ -1,6 +1,8 @@
 const { addPlayer, removePlayer, getAll } = require('./WorldStateManager');
+const { clearUser } = require('./RoomManager');
 const User = require('../models/User');
 const { registerMovementHandler } = require('../handlers/movementHandler');
+const { SPAWN_POSITION } = require('../config/constants');
 
 const socketToUser = new Map();
 
@@ -9,20 +11,29 @@ const handleConnect = async (socket, io) => {
   registerMovementHandler(socket, socketToUser);
   // when a user joins, create a new user in the database and add them to the world state
   socket.on('user:join', async ({ name }) => {
+    const existing = socketToUser.get(socket.id);
+    if (existing) {
+      removePlayer(existing);
+      clearUser(existing);
+      socketToUser.delete(socket.id);
+      // debugging
+      console.log(`[Join] Cleaned up previous user: ${existing}`);
+    }
     const user = await User.create({ name });
     const userId = user._id.toString();
+    // debugging
+    console.log(`User joined: ${name} (${userId})`);
     
     // Map the socket ID to the user ID for easy lookup on disconnect
     socketToUser.set(socket.id, userId);
-
+    
+    //debugging
+    console.log(`Socket mapped to user: ${socket.id} -> ${userId}`);
     // Add the new player to the world state with initial position and name
-    addPlayer(userId, { x: 100, y: 100, name, socketId: socket.id });
+    addPlayer(userId, { x: SPAWN_POSITION.x, y: SPAWN_POSITION.y, name, socketId: socket.id });
 
-    // Send the current world state to the newly connected player
     socket.emit('world:snapshot', { userId, players: getAll() });
-
-    // Notify all other players about the new player
-    socket.broadcast.emit('player:joined', { userId, x: 100, y: 100, name });
+    socket.broadcast.emit('player:joined', { userId, x: SPAWN_POSITION.x, y: SPAWN_POSITION.y, name });
   });
 
   // when a user disconnects, remove them from the world state 

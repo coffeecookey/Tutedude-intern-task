@@ -8,12 +8,14 @@ const { Server } = require('socket.io');
 const { connectDB } = require('./config/db');
 const { initConnectionManager } = require('./managers/ConnectionManager');
 const { startGameLoop } = require('./GameLoop');
+const mapData = require('./world/mapData');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(express.json());
+app.get('/api/map', (_req, res) => res.json(mapData));
 
 connectDB();
 
