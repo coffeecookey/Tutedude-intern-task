@@ -1,10 +1,12 @@
 const { addPlayer, removePlayer, getAll } = require('./WorldStateManager');
 const User = require('../models/User');
+const { registerMovementHandler } = require('../handlers/movementHandler');
 
 const socketToUser = new Map();
 
 // handle socket connection and disconnection
 const handleConnect = async (socket, io) => {
+  registerMovementHandler(socket, socketToUser);
   // when a user joins, create a new user in the database and add them to the world state
   socket.on('user:join', async ({ name }) => {
     const user = await User.create({ name });

@@ -7,6 +7,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { connectDB } = require('./config/db');
 const { initConnectionManager } = require('./managers/ConnectionManager');
+const { startGameLoop } = require('./GameLoop');
 
 const app = express();
 const server = http.createServer(app);
@@ -17,6 +18,7 @@ app.use(express.json());
 connectDB();
 
 initConnectionManager(io);
+startGameLoop(io);
 
 // if port is set in environment variables then use it
 // otherwise default use 3001
