@@ -33,6 +33,19 @@ const useGameStore = create((set) => ({
     }
     return { remotePlayers: m };
   }),
+
+  chatMessages: [],
+  activeChatRoom: null,
+  connectedUsers: [],
+
+  addChatMessage: (msg) => set((s) => {
+    if (s.chatMessages.some(m => m.id === msg.id)) return s;
+    return { chatMessages: [...s.chatMessages, msg].slice(-100) };
+  }),
+  setChatMessages: (msgs) => set({ chatMessages: msgs }),
+  clearChatMessages: () => set({ chatMessages: [] }),
+  setActiveChatRoom: (roomId) => set({ activeChatRoom: roomId }),
+  setConnectedUsers: (users) => set({ connectedUsers: users }),
 }));
 
 export default useGameStore;

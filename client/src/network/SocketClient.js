@@ -52,13 +52,20 @@ const _on = (event, cb) => {
 
 // The following functions are specific event listeners for different socket events such as 
 // 'world:snapshot', 'world:state', 'player:joined', 'player:left', 'connect', and 'disconnect'.
-const onWorldSnapshot = (cb) => _on('world:snapshot', cb);
+const emitChatMessage  = (roomId, text) => socket?.emit('chat:message', { roomId, text });
+
+const onWorldSnapshot  = (cb) => _on('world:snapshot', cb);
 const onWorldState    = (cb) => _on('world:state', cb);
 const onPlayerJoined  = (cb) => _on('player:joined', cb);
 const onPlayerLeft    = (cb) => _on('player:left', cb);
-const onConnect       = (cb) => _on('connect', cb);
-const onDisconnect    = (cb) => _on('disconnect', cb);
+const onConnect        = (cb) => _on('connect', cb);
+const onDisconnect     = (cb) => _on('disconnect', cb);
+const onInteractStart  = (cb) => _on('interact:start', cb);
+const onChatHistory    = (cb) => _on('chat:history', cb);
+const onInteractEnd    = (cb) => _on('interact:end', cb);
+const onChatMessage    = (cb) => _on('chat:message', cb);
+const onLocationUpdate = (cb) => _on('location:update', cb);
 
 const disconnect = () => { hasJoined = false; socket?.disconnect(); socket = null; };
 
-export { connect, emitJoin, emitMove, onWorldSnapshot, onWorldState, onPlayerJoined, onPlayerLeft, onConnect, onDisconnect, disconnect };
+export { connect, emitJoin, emitMove, emitChatMessage, onWorldSnapshot, onWorldState, onPlayerJoined, onPlayerLeft, onConnect, onDisconnect, onInteractStart, onInteractEnd, onChatMessage, onChatHistory, onLocationUpdate, disconnect };

@@ -2,6 +2,7 @@ const { addPlayer, removePlayer, getAll } = require('./WorldStateManager');
 const { clearUser } = require('./RoomManager');
 const User = require('../models/User');
 const { registerMovementHandler } = require('../handlers/movementHandler');
+const { registerChatHandler } = require('../handlers/chatHandler');
 const { SPAWN_POSITION } = require('../config/constants');
 
 const socketToUser = new Map();
@@ -9,6 +10,7 @@ const socketToUser = new Map();
 // handle socket connection and disconnection
 const handleConnect = async (socket, io) => {
   registerMovementHandler(socket, socketToUser);
+  registerChatHandler(socket, io, socketToUser);
   // when a user joins, create a new user in the database and add them to the world state
   socket.on('user:join', async ({ name }) => {
     const existing = socketToUser.get(socket.id);

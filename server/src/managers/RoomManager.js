@@ -1,3 +1,4 @@
+const { clearHistory } = require('./ChatManager');
 const activeRooms = new Map();
 const userRoom    = new Map();
 
@@ -25,6 +26,7 @@ const leaveRoom = (io, userId, groupId) => {
   console.log(`[RoomManager] left - ${userId} → ${groupId}`);
   if (room.size === 0) {
     activeRooms.delete(groupId);
+    clearHistory(groupId);
     console.log(`[RoomManager] room deleted - ${groupId}`);
   }
 };
