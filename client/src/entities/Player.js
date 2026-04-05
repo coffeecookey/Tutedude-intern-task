@@ -34,8 +34,18 @@ class Player {
     label.anchor.set(0.5);
     label.y = RADIUS + 10;
 
-    // Add the circle and label to the player's container
     this.container.addChild(circle, label);
+
+    if (isLocal) {
+      const youTag = new PIXI.Text('(You)', {
+        fontSize: 10,
+        fill: theme.localPlayer,
+        fontFamily: theme.labelFont,
+      });
+      youTag.anchor.set(0.5);
+      youTag.y = RADIUS + 24;
+      this.container.addChild(youTag);
+    }
     this.container.x = x;
     this.container.y = y;
   }
