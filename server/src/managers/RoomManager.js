@@ -1,34 +1,41 @@
-const { clearHistory } = require('./ChatManager');
-const activeRooms = new Map();
-const userRoom    = new Map();
+const { getPlayer } = require('./WorldStateManager');
 
-const joinRoom = (io, groupId, members) => {
-  if (!activeRooms.has(groupId)) activeRooms.set(groupId, new Set());
-  const room = activeRooms.get(groupId);
-  members.forEach(uid => {
+const activeRooms = new Map(); // roomId → Set<userId>
+const userRoom    = new Map(); // userId → roomId
+
+const _socketJoin  = (io, uid, roomId) => { const s = getPlayer(uid)?.socketId; if (s && io) io.sockets.sockets.get(s)?.join(roomId); };
+const _socketLeave = (io, uid, roomId) => { const s = getPlayer(uid)?.socketId; if (s && io) io.sockets.sockets.get(s)?.leave(roomId); };
+
+const stableRoomId = (memberArr) => [...memberArr].sort().join('-');
+
+const joinRoom = (io, memberArr) => {
+  const roomId = stableRoomId(memberArr);
+  if (!activeRooms.has(roomId)) activeRooms.set(roomId, new Set());
+  const room = activeRooms.get(roomId);
+  memberArr.forEach(uid => {
     const existing = userRoom.get(uid);
-    if (existing && existing !== groupId) leaveRoom(io, uid, existing);
+    if (existing && existing !== roomId) leaveRoom(io, uid, existing);
     if (room.has(uid)) return;
-    userRoom.set(uid, groupId);
+    userRoom.set(uid, roomId);
     room.add(uid);
+    _socketJoin(io, uid, roomId);
   });
+  return roomId;
 };
 
-const leaveRoom = (io, userId, groupId) => {
+const leaveRoom = (io, userId, roomId) => {
   userRoom.delete(userId);
-  const room = activeRooms.get(groupId);
+  const room = activeRooms.get(roomId);
   if (!room) return;
   room.delete(userId);
-  if (room.size === 0) { activeRooms.delete(groupId); clearHistory(groupId); }
+  _socketLeave(io, userId, roomId);
+  if (room.size === 0) activeRooms.delete(roomId);
+  // history intentionally NOT cleared
 };
 
-const getRoomForUser  = (userId)   => userRoom.get(userId) || null;
-const getActiveRooms  = ()         => [...activeRooms.entries()].map(([groupId, s]) => ({ groupId, members: [...s] }));
-const getUsersInRoom  = (groupId)  => [...(activeRooms.get(groupId) || [])];
+const getRoomForUser = (userId)  => userRoom.get(userId) || null;
+const getActiveRooms = ()        => [...activeRooms.entries()].map(([roomId, s]) => ({ roomId, members: [...s] }));
+const getUsersInRoom = (roomId)  => [...(activeRooms.get(roomId) || [])];
+const clearUser      = (userId)  => { const r = userRoom.get(userId); if (r) leaveRoom(null, userId, r); };
 
-const clearUser = (userId) => {
-  const groupId = userRoom.get(userId);
-  if (groupId) leaveRoom(null, userId, groupId);
-};
-
-module.exports = { joinRoom, leaveRoom, getRoomForUser, clearUser, getActiveRooms, getUsersInRoom };
+module.exports = { joinRoom, leaveRoom, getRoomForUser, clearUser, getActiveRooms, getUsersInRoom, stableRoomId };

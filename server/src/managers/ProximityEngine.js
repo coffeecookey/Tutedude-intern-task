@@ -1,16 +1,15 @@
 const { getAll } = require('./WorldStateManager');
-const { joinRoom, leaveRoom } = require('./RoomManager');
-const { getHistory } = require('./ChatManager');
+const { joinRoom, leaveRoom, getRoomForUser, stableRoomId } = require('./RoomManager');
+const { getHistory, copyHistory } = require('./ChatManager');
 const { rooms: mapData } = require('../world/mapData');
 
 const CONNECT_DIST_SQ    = 150 ** 2;
 const DISCONNECT_DIST_SQ = 195 ** 2;
 
 const prevPairs  = new Set();
-let   prevGroups = {}; // stableKey → Set<userId>
+let   prevGroups = {}; // memberKey → Set<userId>
 
-const pairKey = (a, b) => (a < b ? `${a}:${b}` : `${b}:${a}`);
-// stable group key = sorted member ids joined, independent of union-find root
+const pairKey  = (a, b)   => (a < b ? `${a}:${b}` : `${b}:${a}`);
 const groupKey = (members) => [...members].sort().join(',');
 
 const find = (parent, x) => {
@@ -26,7 +25,7 @@ const union = (parent, rank, a, b) => {
   else { parent[rb] = ra; rank[ra]++; }
 };
 
-const getRoomId = (x, y) => {
+const getLocationRoomId = (x, y) => {
   const room = mapData.find(r => x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height);
   return room ? room.id : null;
 };
@@ -49,14 +48,11 @@ const runProximity = (io) => {
       const a = ids[i], b = ids[j];
       const pa = allPlayers[a], pb = allPlayers[b];
       if (!pa || !pb) continue;
-
       const key = pairKey(a, b);
-      const dx = pa.x - pb.x;
-      const dy = pa.y - pb.y;
+      const dx = pa.x - pb.x, dy = pa.y - pb.y;
       const distSq = dx * dx + dy * dy;
       const wasConnected = prevPairs.has(key);
       const threshold = wasConnected ? DISCONNECT_DIST_SQ : CONNECT_DIST_SQ;
-
       if (distSq < threshold) {
         union(parent, rank, a, b);
         if (!wasConnected) prevPairs.add(key);
@@ -66,7 +62,6 @@ const runProximity = (io) => {
     }
   }
 
-  // build groups with stable keys
   const rootGroups = {};
   ids.forEach(id => {
     const root = find(parent, id);
@@ -81,28 +76,46 @@ const runProximity = (io) => {
     currentGroups[key] = members;
   }
 
-  // cleanup dissolved groups
+  // players no longer in any group → emit interact:end only to them
   for (const [gKey, members] of Object.entries(prevGroups)) {
+    if (currentGroups[gKey]) continue; // group still exists unchanged
     members.forEach(uid => {
-      if (!currentGroups[gKey]?.has(uid)) {
-        leaveRoom(io, uid, gKey);
+      // only emit interact:end if this uid is not in ANY current group
+      const stillGrouped = Object.values(currentGroups).some(m => m.has(uid));
+      if (!stillGrouped) {
+        const roomId = getRoomForUser(uid);
+        if (roomId) leaveRoom(io, uid, roomId);
         const s = allPlayers[uid]?.socketId;
         if (s) io.to(s).emit('interact:end');
       }
     });
   }
 
-  // notify new/changed groups
+  // new/changed groups
   for (const [gKey, members] of Object.entries(currentGroups)) {
     const memberArr = [...members];
-    joinRoom(io, gKey, memberArr);
+    const newRoomId = stableRoomId(memberArr);
+
+    // copy history from any previous smaller/larger group any member was in
+    if (!prevGroups[gKey]) {
+      const seenRooms = new Set();
+      memberArr.forEach(uid => {
+        const oldRoom = getRoomForUser(uid);
+        if (oldRoom && oldRoom !== newRoomId && !seenRooms.has(oldRoom)) {
+          copyHistory(oldRoom, newRoomId);
+          seenRooms.add(oldRoom);
+        }
+      });
+    }
+
+    const roomId = joinRoom(io, memberArr);
     const prev = prevGroups[gKey];
     memberArr.forEach(uid => {
       if (!prev || !prev.has(uid)) {
         const s = allPlayers[uid]?.socketId;
         if (s) {
-          io.to(s).emit('interact:start', { roomId: gKey, members: memberArr });
-          io.to(s).emit('chat:history', getHistory(gKey));
+          io.to(s).emit('interact:start', { roomId, members: memberArr });
+          io.to(s).emit('chat:history', getHistory(roomId));
         }
       }
     });
@@ -112,7 +125,7 @@ const runProximity = (io) => {
 
   ids.forEach(uid => {
     const p = allPlayers[uid];
-    if (p) io.to(p.socketId).emit('location:update', { userId: uid, room: getRoomId(p.x, p.y) });
+    if (p) io.to(p.socketId).emit('location:update', { userId: uid, room: getLocationRoomId(p.x, p.y) });
   });
 };
 

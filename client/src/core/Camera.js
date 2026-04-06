@@ -1,20 +1,23 @@
 let _stage = null;
 let _x = 0;
 let _y = 0;
+let _zoom = 1;
 let _resizeHandler = null;
 
-const applyCamera = (stage, x, y) => {
+const applyCamera = (stage, x, y, zoom = 1) => {
   _stage = stage;
   _x = x;
   _y = y;
-  stage.x = window.innerWidth / 2 - x;
-  stage.y = window.innerHeight / 2 - y;
+  _zoom = zoom;
+  stage.scale.set(zoom);
+  stage.x = window.innerWidth  / 2 - x * zoom;
+  stage.y = window.innerHeight / 2 - y * zoom;
 
   if (!_resizeHandler) {
     _resizeHandler = () => {
       if (_stage) {
-        _stage.x = window.innerWidth / 2 - _x;
-        _stage.y = window.innerHeight / 2 - _y;
+        _stage.x = window.innerWidth  / 2 - _x * _zoom;
+        _stage.y = window.innerHeight / 2 - _y * _zoom;
       }
     };
     window.addEventListener('resize', _resizeHandler);

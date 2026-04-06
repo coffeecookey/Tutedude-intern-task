@@ -16,6 +16,9 @@ const MAP_BOUNDS = { width: 2000, height: 1500 };
 const LABEL_FADE_START = 180;
 const LABEL_FADE_END = 280;
 const PLAYER_RADIUS = 24;
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 2.0;
+let zoom = 1.0;
 
 const collidesWithObstacles = (x, y) => {
   for (const obs of getObstacles()) {
@@ -53,6 +56,12 @@ export default function GameCanvas({ playerName, onReady, hidden }) {
       const pos = e.getLocalPosition(stage);
       setMoveTarget(pos.x, pos.y);
     });
+
+    const onWheel = (e) => {
+      e.preventDefault();
+      zoom = Math.min(Math.max(zoom * (e.deltaY < 0 ? 1.1 : 0.9), MIN_ZOOM), MAX_ZOOM);
+    };
+    canvasRef.current.addEventListener('wheel', onWheel, { passive: false });
     initInput();
     const debugLayer = new PIXI.Container();
     debugLayer.visible = false;
@@ -210,7 +219,7 @@ export default function GameCanvas({ playerName, onReady, hidden }) {
         useGameStore.getState().setLocalCoords(stateRef.current.localX, stateRef.current.localY);
         const lp = players.get(localId);
         if (lp) lp.update(stateRef.current.localX, stateRef.current.localY);
-        applyCamera(stage, stateRef.current.localX, stateRef.current.localY);
+        applyCamera(stage, stateRef.current.localX, stateRef.current.localY, zoom);
 
         const lx = stateRef.current.localX;
         const ly = stateRef.current.localY;
@@ -236,6 +245,7 @@ export default function GameCanvas({ playerName, onReady, hidden }) {
     // it cleans up all the socket event listeners by calling the unsubscribe functions stored in the unsubs array
     // also destroys the PIXI application to free up resources.
     return () => {
+      canvasRef.current?.removeEventListener('wheel', onWheel);
       unsubs.forEach((u) => u());
       disconnect();
       destroyCamera();

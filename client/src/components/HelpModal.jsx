@@ -42,6 +42,7 @@ export default function HelpModal() {
               <Row k="A / ←" v="Move left" />
               <Row k="D / →" v="Move right" />
               <Row k="Proximity" v="Walk near a player to chat" />
+              <Row k="Scroll wheel" v="Zoom in / out" />
             </div>
             <button className="mt-4 text-xs" style={{ color: t.textMuted }} onClick={() => setOpen(false)}>Close</button>
           </div>

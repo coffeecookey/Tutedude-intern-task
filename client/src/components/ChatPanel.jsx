@@ -11,7 +11,7 @@ export default function ChatPanel() {
   const bottomRef = useRef(null);
   const scrollRef = useRef(null);
 
-  useEffect(() => { clearChatMessages(); }, [activeChatRoom]);
+  useEffect(() => { if (!activeChatRoom) clearChatMessages(); }, [activeChatRoom]);
 
   useEffect(() => {
     const el = scrollRef.current;
