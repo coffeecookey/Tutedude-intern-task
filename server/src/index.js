@@ -15,7 +15,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 const cors = require('cors');
-app.use(cors({ origin: 'https://virtual-office-nmfs.onrender.com' }));
+
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',')
+  : ['http://localhost:5173'];
+
+app.use(cors({ origin: allowedOrigins }));
 
 app.use(express.json());
 app.get('/api/map', (_req, res) => res.json({ rooms, obstacles }));
