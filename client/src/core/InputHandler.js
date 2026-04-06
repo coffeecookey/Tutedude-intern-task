@@ -1,25 +1,37 @@
-// This file handles user input by tracking which keys are currently pressed.
-// It provides a function to get the current velocity based on the pressed keys
-
 const keys = {};
+let target = null;
+let debugMode = false;
+
+const WASD_SPEED = 4;
+const CLICK_MOVE_SPEED = 12;
 
 const initInput = () => {
-  window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyL') { debugMode = !debugMode; return; }
+    keys[e.code] = true;
+    clearMoveTarget();
+  });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 };
 
-// TO DO
-// using arrow keys rn, may add WASD later since I'm more of a WASD person myself lol
-const getVelocity = (speed = 4) => {
+const setMoveTarget   = (x, y) => { target = { x, y }; };
+const clearMoveTarget = ()      => { target = null; };
+const isDebugMode     = ()      => debugMode;
+
+const getVelocity = (currentX = 0, currentY = 0) => {
+  if (target) {
+    const dx = target.x - currentX;
+    const dy = target.y - currentY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 5) { clearMoveTarget(); return { vx: 0, vy: 0 }; }
+    return { vx: (dx / dist) * CLICK_MOVE_SPEED, vy: (dy / dist) * CLICK_MOVE_SPEED };
+  }
   let vx = 0, vy = 0;
-  if (keys['ArrowLeft']  || keys['KeyA']) vx -= speed;
-  if (keys['ArrowRight'] || keys['KeyD']) vx += speed;
-  if (keys['ArrowUp']    || keys['KeyW']) vy -= speed;
-  if (keys['ArrowDown']  || keys['KeyS']) vy += speed;
+  if (keys['ArrowLeft']  || keys['KeyA']) vx -= WASD_SPEED;
+  if (keys['ArrowRight'] || keys['KeyD']) vx += WASD_SPEED;
+  if (keys['ArrowUp']    || keys['KeyW']) vy -= WASD_SPEED;
+  if (keys['ArrowDown']  || keys['KeyS']) vy += WASD_SPEED;
   return { vx, vy };
 };
 
-// TO DO
-// mouse input so that user clicks and quickly goes/transports to that location on map?
-
-export { initInput, getVelocity };
+export { initInput, getVelocity, setMoveTarget, clearMoveTarget, isDebugMode };

@@ -61,6 +61,9 @@ const useGameStore = create((set) => ({
     return { playerStatuses: m };
   }),
 
+  localCoords: { x: 0, y: 0 },
+  setLocalCoords: (x, y) => set({ localCoords: { x, y } }),
+
   toasts: [],
   addToast: (message) => set((s) => {
     const id = Date.now() + Math.random();

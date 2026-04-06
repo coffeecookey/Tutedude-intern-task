@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { initRenderer, destroyRenderer } from '../core/Renderer';
-import { initInput, getVelocity } from '../core/InputHandler';
-import { fetchMapData, loadMap } from '../core/MapLoader';
+import { initInput, getVelocity, setMoveTarget, isDebugMode } from '../core/InputHandler';
+import * as PIXI from 'pixi.js';
+import { fetchMapData, loadMap, getObstacles } from '../core/MapLoader';
 import { applyCamera, destroyCamera } from '../core/Camera';
 import Player from '../entities/Player';
 import useGameStore from '../state/useGameStore';
@@ -11,9 +12,20 @@ import {
   onInteractStart, onInteractEnd, onChatMessage, onChatHistory,
   onLocationUpdate, onStatusBatch, onReconnect, onDisconnect,
 } from '../network/SocketClient';
-const MAP_BOUNDS = { width: 2000, height: 2000 };
+const MAP_BOUNDS = { width: 2000, height: 1500 };
 const LABEL_FADE_START = 180;
 const LABEL_FADE_END = 280;
+const PLAYER_RADIUS = 24;
+
+const collidesWithObstacles = (x, y) => {
+  for (const obs of getObstacles()) {
+    const cx = Math.min(Math.max(x, obs.x), obs.x + obs.width);
+    const cy = Math.min(Math.max(y, obs.y), obs.y + obs.height);
+    const dx = x - cx, dy = y - cy;
+    if (dx * dx + dy * dy < PLAYER_RADIUS * PLAYER_RADIUS) return true;
+  }
+  return false;
+};
 
 // clamp is a utility function that restricts a value v to be within the range defined by min and max.
 // It uses Math.min and Math.max to ensure that v does not go below min or above max, effectively clamping it within the specified range.
@@ -35,9 +47,44 @@ export default function GameCanvas({ playerName, onReady, hidden }) {
   useEffect(() => {
     const app = initRenderer(canvasRef.current);
     const stage = app.stage;
+    stage.eventMode = 'static';
+    stage.hitArea = new PIXI.Rectangle(0, 0, MAP_BOUNDS.width, MAP_BOUNDS.height);
+    stage.on('pointerdown', (e) => {
+      const pos = e.getLocalPosition(stage);
+      setMoveTarget(pos.x, pos.y);
+    });
     initInput();
-    fetchMapData().then((roomsData) => {
-      stateRef.current.rooms = loadMap(stage, roomsData);
+    const debugLayer = new PIXI.Container();
+    debugLayer.visible = false;
+    const dbgPlayerText = new PIXI.Text('', { fontSize: 12, fill: 0xffffff });
+    dbgPlayerText.x = 10; dbgPlayerText.y = 10;
+    const dbgMouseText  = new PIXI.Text('', { fontSize: 12, fill: 0xffffff });
+    debugLayer.addChild(dbgPlayerText, dbgMouseText);
+
+    const mouseWorld = { x: 0, y: 0 };
+    stage.on('pointermove', (e) => {
+      const p = e.getLocalPosition(stage);
+      mouseWorld.x = p.x; mouseWorld.y = p.y;
+    });
+
+    fetchMapData().then((roomsData) => loadMap(stage, roomsData)).then((rooms) => {
+      stateRef.current.rooms = rooms;
+
+      const dbgGraphics = new PIXI.Graphics();
+      getObstacles().forEach((obs) => {
+        dbgGraphics.lineStyle(1, 0xff0000, 1);
+        dbgGraphics.beginFill(0xff0000, 0.3);
+        dbgGraphics.drawRect(obs.x, obs.y, obs.width, obs.height);
+        dbgGraphics.endFill();
+      });
+      rooms.forEach((r) => {
+        dbgGraphics.lineStyle(1, 0x00ff00, 1);
+        dbgGraphics.beginFill(0x00ff00, 0.2);
+        dbgGraphics.drawRect(r.x, r.y, r.width, r.height);
+        dbgGraphics.endFill();
+      });
+      debugLayer.addChildAt(dbgGraphics, 0);
+      stage.addChild(debugLayer);
     });
     connect();
     emitJoin(playerName);
@@ -138,16 +185,29 @@ export default function GameCanvas({ playerName, onReady, hidden }) {
     }));
 
     app.ticker.add(() => {
+      const debug = isDebugMode();
+      debugLayer.visible = debug;
+      if (debug) {
+        dbgPlayerText.text = `Player: (${Math.round(stateRef.current.localX)}, ${Math.round(stateRef.current.localY)})`;
+        dbgMouseText.text  = `Mouse: (${Math.round(mouseWorld.x)}, ${Math.round(mouseWorld.y)})`;
+        dbgMouseText.x = mouseWorld.x + 12;
+        dbgMouseText.y = mouseWorld.y - 16;
+      }
+
       const { localId, players } = stateRef.current;
 
       if (localId) {
-        const { vx, vy } = getVelocity();
         const prevX = stateRef.current.localX;
         const prevY = stateRef.current.localY;
-        stateRef.current.localX = clamp(prevX + vx, 0, MAP_BOUNDS.width);
-        stateRef.current.localY = clamp(prevY + vy, 0, MAP_BOUNDS.height);
+        const { vx, vy } = getVelocity(prevX, prevY);
+        const nextX = clamp(prevX + vx, 0, MAP_BOUNDS.width);
+        const nextY = clamp(prevY + vy, 0, MAP_BOUNDS.height);
+        const blocked = collidesWithObstacles(nextX, nextY);
+        stateRef.current.localX = blocked ? prevX : nextX;
+        stateRef.current.localY = blocked ? prevY : nextY;
         if (stateRef.current.localX !== prevX || stateRef.current.localY !== prevY)
           emitMove(stateRef.current.localX, stateRef.current.localY);
+        useGameStore.getState().setLocalCoords(stateRef.current.localX, stateRef.current.localY);
         const lp = players.get(localId);
         if (lp) lp.update(stateRef.current.localX, stateRef.current.localY);
         applyCamera(stage, stateRef.current.localX, stateRef.current.localY);

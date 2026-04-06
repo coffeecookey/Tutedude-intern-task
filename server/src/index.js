@@ -9,14 +9,14 @@ const { connectDB } = require('./config/db');
 const { initConnectionManager } = require('./managers/ConnectionManager');
 const { startGameLoop } = require('./GameLoop');
 const { startStatusLoop } = require('./managers/StatusManager');
-const mapData = require('./world/mapData');
+const { rooms, obstacles } = require('./world/mapData');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(express.json());
-app.get('/api/map', (_req, res) => res.json(mapData));
+app.get('/api/map', (_req, res) => res.json({ rooms, obstacles }));
 
 connectDB();
 

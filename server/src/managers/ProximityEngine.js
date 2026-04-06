@@ -1,7 +1,7 @@
 const { getAll } = require('./WorldStateManager');
 const { joinRoom, leaveRoom } = require('./RoomManager');
 const { getHistory } = require('./ChatManager');
-const mapData = require('../world/mapData');
+const { rooms: mapData } = require('../world/mapData');
 
 const CONNECT_DIST_SQ    = 150 ** 2;
 const DISCONNECT_DIST_SQ = 195 ** 2;

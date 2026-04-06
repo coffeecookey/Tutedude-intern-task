@@ -1,16 +1,25 @@
+import * as PIXI from 'pixi.js';
 import Room from '../entities/Room';
+
+let _obstacles = [];
 
 const fetchMapData = async () => {
   const res = await fetch('/api/map');
   return res.json();
 };
 
-const loadMap = (stage, roomsData) => {
-  return roomsData.map((roomData) => {
-    const room = new Room(roomData);
-    stage.addChildAt(room.container, 0);
-    return room;
-  });
+const loadMap = async (stage, { rooms, obstacles }) => {
+  _obstacles = obstacles || [];
+
+  const texture = await PIXI.Assets.load('/mapfinal_2000_1500.png');
+  const bg = new PIXI.Sprite(texture);
+  bg.width  = 2000;
+  bg.height = 1493;
+  stage.addChildAt(bg, 0);
+
+  return rooms.map((roomData) => new Room(roomData));
 };
 
-export { fetchMapData, loadMap };
+const getObstacles = () => _obstacles;
+
+export { fetchMapData, loadMap, getObstacles };
