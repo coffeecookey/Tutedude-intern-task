@@ -10,8 +10,9 @@ const connect = () => {
   // If a socket exists but is not connected, it disconnects it before creating a new connection.
   if (socket?.connected) return socket;
   if (socket) socket.disconnect();
-
-  socket = io();
+  //for render
+  const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
+  socket = io(SOCKET_URL);
   // Set up event listeners for the socket connection to handle connection, disconnection, and connection errors.
   socket.on('disconnect', () => { hasJoined = false; });
   socket.on('connect_error', (err) => console.error('Connection error:', err.message));
