@@ -18,7 +18,7 @@ const MAP_BOUNDS = { width: 2000, height: 2000 };
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 
 // GameCanvas is the main component responsible for rendering the game canvas and managing the game state for the local player and remote players.
-export default function GameCanvas({ playerName }) {
+export default function GameCanvas({ playerName, onReady, hidden }) {
   const canvasRef = useRef(null);
 
   // stateRef is a mutable reference that holds the current state of the game, 
@@ -72,6 +72,7 @@ export default function GameCanvas({ playerName }) {
           stateRef.current.localY = data.y;
           console.log('[Snapshot] localX:', data.x, 'localY:', data.y);
           setLocalPlayer({ userId, x: data.x, y: data.y, name: data.name });
+          onReady?.();
         } 
         // If the player is a remote player, we add them to the game store's remotePlayers Map using the addPlayer function.
         else {
@@ -156,5 +157,5 @@ export default function GameCanvas({ playerName }) {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="block w-screen h-screen" />;
+  return <canvas ref={canvasRef} className="block w-screen h-screen" style={hidden ? { visibility: 'hidden' } : {}} />;
 }
