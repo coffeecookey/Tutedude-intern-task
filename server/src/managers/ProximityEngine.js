@@ -59,13 +59,9 @@ const runProximity = (io) => {
 
       if (distSq < threshold) {
         union(parent, rank, a, b);
-        if (!wasConnected) {
-          prevPairs.add(key);
-          console.log('[Proximity] Connected:', a, '↔', b, 'distSq:', distSq);
-        }
+        if (!wasConnected) prevPairs.add(key);
       } else if (wasConnected) {
         prevPairs.delete(key);
-        console.log('[Proximity] Disconnected:', a, '↔', b, 'distSq:', distSq);
       }
     }
   }
@@ -104,7 +100,6 @@ const runProximity = (io) => {
     memberArr.forEach(uid => {
       if (!prev || !prev.has(uid)) {
         const s = allPlayers[uid]?.socketId;
-        console.log('[Proximity] interact:start →', uid, 'socket:', s, 'group:', gKey);
         if (s) {
           io.to(s).emit('interact:start', { roomId: gKey, members: memberArr });
           io.to(s).emit('chat:history', getHistory(gKey));

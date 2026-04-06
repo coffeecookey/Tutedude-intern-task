@@ -33,7 +33,6 @@ const registerMovementHandler = (socket, socketToUser) => {
     lastMoveTime.set(socket.id, now);
     const cx = Math.min(Math.max(x, 0), MAP_BOUNDS.width);
     const cy = Math.min(Math.max(y, 0), MAP_BOUNDS.height);
-    console.log(`[Move] ${userId}: (${player.x},${player.y}) → (${cx},${cy})`);
     updatePlayer(userId, cx, cy);
   });
 

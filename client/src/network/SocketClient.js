@@ -13,11 +13,7 @@ const connect = () => {
 
   socket = io();
   // Set up event listeners for the socket connection to handle connection, disconnection, and connection errors.
-  socket.on('connect', () => {
-    console.log('Socket connected:', socket.id);
-  });
-  // Log disconnection reasons and connection errors for debugging purposes.
-  socket.on('disconnect', (reason) => { hasJoined = false; console.log('Socket disconnected:', reason); });
+  socket.on('disconnect', () => { hasJoined = false; });
   socket.on('connect_error', (err) => console.error('Connection error:', err.message));
 
   return socket;
@@ -60,6 +56,7 @@ const onPlayerJoined  = (cb) => _on('player:joined', cb);
 const onPlayerLeft    = (cb) => _on('player:left', cb);
 const onConnect        = (cb) => _on('connect', cb);
 const onDisconnect     = (cb) => _on('disconnect', cb);
+const onReconnect      = (cb) => _on('connect', cb);
 const onInteractStart  = (cb) => _on('interact:start', cb);
 const onChatHistory    = (cb) => _on('chat:history', cb);
 const onStatusBatch    = (cb) => _on('status:batch', cb);
@@ -69,4 +66,4 @@ const onLocationUpdate = (cb) => _on('location:update', cb);
 
 const disconnect = () => { hasJoined = false; socket?.disconnect(); socket = null; };
 
-export { connect, emitJoin, emitMove, emitChatMessage, onWorldSnapshot, onWorldState, onPlayerJoined, onPlayerLeft, onConnect, onDisconnect, onInteractStart, onInteractEnd, onChatMessage, onChatHistory, onLocationUpdate, onStatusBatch, disconnect };
+export { connect, emitJoin, emitMove, emitChatMessage, onWorldSnapshot, onWorldState, onPlayerJoined, onPlayerLeft, onConnect, onDisconnect, onReconnect, onInteractStart, onInteractEnd, onChatMessage, onChatHistory, onLocationUpdate, onStatusBatch, disconnect };

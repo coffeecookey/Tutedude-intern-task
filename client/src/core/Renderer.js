@@ -1,13 +1,9 @@
-// This file sets up the PIXI renderer for the game. 
-// It initializes the canvas and provides access to the PIXI application 
-// and stage for rendering game objects :)
-
 import * as PIXI from 'pixi.js';
 import theme from '../theme';
 
 let app = null;
+let _resizeHandler = null;
 
-// Initialize the PIXI application and set up the canvas
 const initRenderer = (canvasEl) => {
   app = new PIXI.Application({
     view: canvasEl,
@@ -19,14 +15,20 @@ const initRenderer = (canvasEl) => {
     autoDensity: true,
   });
 
-  // Handle window resize to keep the canvas full-screen
-  window.addEventListener('resize', () => {
-    app.renderer.resize(window.innerWidth, window.innerHeight);
-  });
+  _resizeHandler = () => app.renderer.resize(window.innerWidth, window.innerHeight);
+  window.addEventListener('resize', _resizeHandler);
 
   return app;
 };
 
+const destroyRenderer = () => {
+  if (_resizeHandler) {
+    window.removeEventListener('resize', _resizeHandler);
+    _resizeHandler = null;
+  }
+  app = null;
+};
+
 const getApp = () => app;
 const getStage = () => app?.stage;
-export { initRenderer, getApp, getStage };
+export { initRenderer, destroyRenderer, getApp, getStage };

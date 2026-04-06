@@ -17,23 +17,10 @@ const handleConnect = async (socket, io) => {
   // when a user joins, create a new user in the database and add them to the world state
   socket.on('user:join', async ({ name }) => {
     const existing = socketToUser.get(socket.id);
-    if (existing) {
-      removePlayer(existing);
-      clearUser(existing);
-      socketToUser.delete(socket.id);
-      // debugging
-      console.log(`[Join] Cleaned up previous user: ${existing}`);
-    }
+    if (existing) { removePlayer(existing); clearUser(existing); socketToUser.delete(socket.id); }
     const user = await User.create({ name });
     const userId = user._id.toString();
-    // debugging
-    console.log(`User joined: ${name} (${userId})`);
-    
-    // Map the socket ID to the user ID for easy lookup on disconnect
     socketToUser.set(socket.id, userId);
-    
-    //debugging
-    console.log(`Socket mapped to user: ${socket.id} -> ${userId}`);
     // Add the new player to the world state with initial position and name
     addPlayer(userId, { x: SPAWN_POSITION.x, y: SPAWN_POSITION.y, name, socketId: socket.id });
     updateActivity(userId);

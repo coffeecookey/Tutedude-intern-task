@@ -67,6 +67,12 @@ class Player {
   }
 
   tick() {
+    if (this._fading) {
+      this.container.alpha -= 0.04;
+      if (this.container.alpha <= 0) this.destroy(this._fadeStage);
+      return;
+    }
+
     if (this.isLocal) {
       this.container.x = this.targetX;
       this.container.y = this.targetY;
@@ -81,6 +87,11 @@ class Player {
       this.container.x += (this.targetX - this.container.x) * LERP_FACTOR;
       this.container.y += (this.targetY - this.container.y) * LERP_FACTOR;
     }
+  }
+
+  fadeOut(stage) {
+    this._fading = true;
+    this._fadeStage = stage;
   }
 
   destroy(stage) {

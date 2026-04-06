@@ -1,17 +1,15 @@
 import { useEffect, useRef } from 'react';
-import * as PIXI from 'pixi.js';
-import { initRenderer } from '../core/Renderer';
+import { initRenderer, destroyRenderer } from '../core/Renderer';
 import { initInput, getVelocity } from '../core/InputHandler';
 import { fetchMapData, loadMap } from '../core/MapLoader';
-import { applyCamera } from '../core/Camera';
+import { applyCamera, destroyCamera } from '../core/Camera';
 import Player from '../entities/Player';
 import useGameStore from '../state/useGameStore';
-import theme from '../theme';
 import {
   connect, emitJoin, emitMove, disconnect,
   onWorldSnapshot, onWorldState, onPlayerJoined, onPlayerLeft,
   onInteractStart, onInteractEnd, onChatMessage, onChatHistory,
-  onLocationUpdate, onStatusBatch,
+  onLocationUpdate, onStatusBatch, onReconnect, onDisconnect,
 } from '../network/SocketClient';
 const MAP_BOUNDS = { width: 2000, height: 2000 };
 const LABEL_FADE_START = 180;
@@ -74,7 +72,6 @@ export default function GameCanvas({ playerName, onReady, hidden }) {
         if (isLocal) {
           stateRef.current.localX = data.x;
           stateRef.current.localY = data.y;
-          console.log('[Snapshot] localX:', data.x, 'localY:', data.y);
           setLocalPlayer({ userId, x: data.x, y: data.y, name: data.name });
           onReady?.();
         } 
@@ -98,7 +95,7 @@ export default function GameCanvas({ playerName, onReady, hidden }) {
     //  also removes them from the game store.
     unsubs.push(onPlayerLeft(({ userId }) => {
       const p = stateRef.current.players.get(userId);
-      if (p) { p.destroy(stage); stateRef.current.players.delete(userId); }
+      if (p) { p.fadeOut(stage); stateRef.current.players.delete(userId); }
       removePlayer(userId);
     }));
 
@@ -134,12 +131,14 @@ export default function GameCanvas({ playerName, onReady, hidden }) {
     }));
     unsubs.push(onStatusBatch((batch) => applyStatusBatch(batch)));
 
-    const lines = new PIXI.Graphics();
-    stage.addChildAt(lines, 0);
+    unsubs.push(onDisconnect(() => addToast('Connection lost. Reconnecting…')));
+    unsubs.push(onReconnect(() => {
+      addToast('Reconnected');
+      emitJoin(playerName);
+    }));
 
     app.ticker.add(() => {
       const { localId, players } = stateRef.current;
-      lines.clear();
 
       if (localId) {
         const { vx, vy } = getVelocity();
@@ -167,13 +166,6 @@ export default function GameCanvas({ playerName, onReady, hidden }) {
             : 1 - (dist - LABEL_FADE_START) / (LABEL_FADE_END - LABEL_FADE_START);
           p.setLabelOpacity(labelAlpha);
 
-          // connection line when within proximity ring
-          if (dist < LABEL_FADE_END) {
-            const lineAlpha = labelAlpha * 0.4;
-            lines.lineStyle(1, theme.localPlayer, lineAlpha);
-            lines.moveTo(lx, ly);
-            lines.lineTo(p.container.x, p.container.y);
-          }
         });
       }
 
@@ -186,6 +178,8 @@ export default function GameCanvas({ playerName, onReady, hidden }) {
     return () => {
       unsubs.forEach((u) => u());
       disconnect();
+      destroyCamera();
+      destroyRenderer();
       app.destroy(false, { children: true });
     };
   }, []);

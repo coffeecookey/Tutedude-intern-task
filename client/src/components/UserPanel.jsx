@@ -12,7 +12,13 @@ export default function UserPanel() {
   return (
     <div className="fixed left-0 top-0 h-full w-48 flex flex-col text-xs"
       style={{ background: t.panelBg, borderRight: `1px solid ${t.border}` }}>
-      <div className="p-2" style={{ color: t.textMuted, borderBottom: `1px solid ${t.border}` }}>Players Online</div>
+      <div className="p-2 flex items-center justify-between" style={{ color: t.textMuted, borderBottom: `1px solid ${t.border}` }}>
+        <span>Players Online</span>
+        <span className="px-1.5 py-0.5 rounded text-xs font-bold"
+          style={{ background: t.border, color: t.textPrimary }}>
+          {remotePlayers.size + (localPlayer ? 1 : 0)}
+        </span>
+      </div>
 
       {localPlayer && (
         <div className="flex items-center gap-2 px-3 py-1" style={{ color: t.accent }}>

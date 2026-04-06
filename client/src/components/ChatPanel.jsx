@@ -35,6 +35,9 @@ export default function ChatPanel() {
       style={{ background: t.panelBg, borderLeft: `1px solid ${t.border}` }}>
       <div className="p-2 text-xs" style={{ color: t.textMuted, borderBottom: `1px solid ${t.border}` }}>Nearby Chat</div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+        {chatMessages.length === 0 && (
+          <div className="text-xs text-center mt-4" style={{ color: t.textDim }}>No messages yet</div>
+        )}
         {chatMessages.map((msg, i) => (
           <div key={`${msg.timestamp}-${msg.from}-${i}`} className="text-xs" style={{ color: t.textPrimary }}>
             <span style={{ color: t.textMuted }}>{msg.name || msg.from.slice(0, 6)}: </span>
