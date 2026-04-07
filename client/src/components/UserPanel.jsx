@@ -50,6 +50,7 @@ export default function UserPanel() {
   const playerStatuses = useGameStore((s) => s.playerStatuses);
   const currentRoom    = useGameStore((s) => s.currentRoom);
   const localPlayer    = useGameStore((s) => s.localPlayer);
+  const playerRooms = useGameStore((s) => s.playerRooms);
   const [selected, setSelected] = useState(null);
 
   const total = remotePlayers.size + (localPlayer ? 1 : 0);
