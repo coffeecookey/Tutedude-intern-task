@@ -5,7 +5,7 @@ let _obstacles = [];
 let _rooms = [];
 
 const fetchMapData = async () => {
-  const res = await fetch('/api/map');
+  const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/map`);
   return res.json();
 };
 
