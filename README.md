@@ -46,38 +46,41 @@ The server runs a **20Hz game loop** (50ms tick) that broadcasts the full world 
 
 ## Design Decisions
 
-**Squared distance comparisons throughout**
-All proximity checks use `dx*dx + dy*dy` and compare against pre-squared thresholds (`150²`, `195²`). Avoids `Math.sqrt` on every pair check every tick.
+**State authority: hybrid model**
+The client sends its position, the server validates bounds and speed, then rebroadcasts. The server is authoritative for proximity, rooms, and chat. Movement stays responsive for the local player while the server prevents cheating everywhere it matters.
 
-**Hysteresis band on proximity (150px connect / 195px disconnect)**
-The connect and disconnect thresholds are different. Once two players are connected, they stay connected until the larger threshold is exceeded. Without this, players hovering at the boundary would cause the chat panel to flicker open and closed on every tick.
+**World state in memory, not the database**
+All player positions are stored in a `Map` on the server. Position updates at 20Hz would overwhelm MongoDB with writes, so the DB is used only to log user join and leave events for sessions.
 
-**Union-Find for proximity grouping**
-Nearby pairs are unioned with a path-compressed, rank-based union-find each tick. This correctly handles transitive proximity (A near B, B near C → all three in one chat) in O(n²·α(n)) time, where α is effectively constant.
+**Batched tick-based broadcasting**
+The server collects all position updates and broadcasts a single `world:state` snapshot per 20Hz tick via `setInterval`. Individual moves are not rebroadcast immediately. This keeps network traffic predictable and low.
 
-**Stable room IDs from sorted member arrays**
-`stableRoomId = [...members].sort().join('-')`. Sorting before joining means the same set of players always produces the same room ID regardless of join order. This allows chat history to persist when the group briefly fragments and re-forms.
+**Proximity detection with hysteresis**
+Proximity runs server-side each tick. Players connect when distance drops below 150px and disconnect only when it exceeds 195px (1.3x the connect radius). The gap prevents the chat panel from flickering when two players hover near the boundary. Union-find groups connected pairs into clusters, so if A is near B and B is near C, all three share one chat room.
 
-**Chat history copy on group merge**
-When a new proximity group forms that includes members from different prior groups, history is copied from all previous rooms into the new room ID. The history buffer is capped at 50 messages per room, with an LRU-style eviction cap of 100 rooms in memory.
+**Stable room IDs**
+`stableRoomId = [...members].sort().join('-')`. Sorting before joining means the same group of players always gets the same room ID regardless of who joined first. Chat history is kept in memory and not deleted when a room dissolves, so history survives brief separations.
 
-**Server-side AABB circle collision**
-The movement handler tests each incoming position against all obstacle rectangles using a circle-vs-AABB nearest-point check (`PLAYER_RADIUS = 24`). Invalid positions are dropped silently — the client is never told the move was rejected; it simply doesn't see itself move in the next world broadcast.
+**Chat routing via server-derived room membership**
+The client sends message text only. The server looks up which room the sender belongs to and broadcasts via `io.to(roomId)`. Messages carry monotonic IDs for ordering and client-side deduplication. Full history is synced to a player when they join a room.
 
-**Rate-limiting and teleport detection on movement**
-Each socket's moves are throttled to one per 30ms. If the claimed displacement in a single move exceeds `MAX_SPEED × 6`, the position is clamped to map bounds and accepted (not rejected) — a soft correction that handles legitimate lag spikes without kicking the player.
+**Movement validation on both sides**
+The client applies collision locally for instant feedback. The server independently validates every move: speed cap check (squared distance, no `sqrt`), bounds clamp to `MAP_BOUNDS`, and circle-vs-AABB collision against all obstacle rectangles (`PLAYER_RADIUS = 24`). Invalid positions are silently dropped. Each socket is also rate-limited to one move per 30ms.
 
-**Pre-built AnimatedSprites at load time**
-`SpriteLoader.preloadAll()` slices all three spritesheets and constructs `PIXI.AnimatedSprite` objects for all avatar/state combinations before the game starts. The `Player` constructor receives already-built texture arrays. Avoids repeated texture lookups and GC pressure from creating sprite objects during gameplay.
+**Map and collision as a single source of truth**
+The background is an authored image. Collision rectangles are defined separately in `mapData.js` and served via `/api/map`. Both client and server import from the same data, so visual layout and game logic can never diverge.
 
-**Client-side lerp for remote players (factor 0.15)**
-Remote player positions are interpolated toward the server-authoritative target each frame. The local player's position is set directly (no lerp) since it originates the movement. Lerp factor of 0.15 gives smooth visual motion without introducing noticeable lag.
+**Client rendering at 60fps from 20Hz updates**
+Remote player positions are lerped toward the latest server snapshot each frame (factor 0.15), giving smooth motion without waiting for the next tick. The local player is set directly with no lerp. All sprite sheets are pre-loaded and `PIXI.AnimatedSprite` objects for all three states (idle, walk, run) are created once per player and toggled by visibility, avoiding GPU churn. `NEAREST` scale mode is used for pixel art crispness.
 
-**Label on outer container, sprite on inner container**
-Each `Player` has a `_spriteContainer` inside its main `container`. Flipping direction sets `_spriteContainer.scale.x = ±1`. The name label is attached to the outer container and therefore never flips.
+**Networking split between REST and Socket.IO**
+Map data and user join use REST. All real-time events (positions, proximity, chat) use Socket.IO. The client throttles position emits to 50ms and discards stale tick snapshots on arrival to handle out-of-order delivery.
 
-**AFK detection with batch diff broadcasting**
-`StatusManager` tracks last activity per user and checks every 10 seconds. It only emits `status:batch` when statuses actually changed — not every interval — to avoid redundant broadcasts to all clients.
+**Reconnection is idempotent**
+Socket.IO auto-reconnects. On reconnect, the client re-emits `user:join`. The server join handler cleans up any existing state for that user before registering them again, so duplicate state never accumulates.
+
+**AFK detection via batch diffs**
+The server tracks `lastActive` per user and checks every 10 seconds. It only emits a `status:batch` event when statuses have actually changed, not on every interval, keeping idle broadcasts to zero.
 
 ---
 
