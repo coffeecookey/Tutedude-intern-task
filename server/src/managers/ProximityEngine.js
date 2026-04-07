@@ -38,6 +38,11 @@ const runProximity = (io) => {
     return p && Number.isFinite(p.x) && Number.isFinite(p.y) && p.socketId;
   });
 
+  ids.forEach(uid => {
+    const p = allPlayers[uid];
+    if (p) io.emit('location:update', { userId: uid, room: getLocationRoomId(p.x, p.y) });
+  });
+
   if (ids.length < 2) return;
 
   const parent = {}, rank = {};
@@ -122,11 +127,6 @@ const runProximity = (io) => {
   }
 
   prevGroups = currentGroups;
-
-  ids.forEach(uid => {
-    const p = allPlayers[uid];
-    if (p) io.emit('location:update', { userId: uid, room: getLocationRoomId(p.x, p.y) });
-  });
 };
 
 module.exports = { runProximity };

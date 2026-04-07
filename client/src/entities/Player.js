@@ -105,7 +105,7 @@ class Player {
   tick() {
     if (this._fading) {
       this.container.alpha -= 0.04;
-      if (this.container.alpha <= 0) this.destroy(this._fadeStage);
+      if (this.container.alpha <= 0) { this.destroy(this._fadeStage); this._onFadeComplete?.(); }
       return;
     }
 
@@ -127,9 +127,10 @@ class Player {
     }
   }
 
-  fadeOut(stage) {
+  fadeOut(stage, onComplete) {
     this._fading = true;
     this._fadeStage = stage;
+    this._onFadeComplete = onComplete;
   }
 
   destroy(stage) {

@@ -157,7 +157,7 @@ export default function GameCanvas({ playerName, avatarId = 1, onReady, hidden }
     unsubs.push(onPlayerLeft(({ userId }) => {
       const p = stateRef.current.players.get(userId);
       const name = useGameStore.getState().remotePlayers.get(userId)?.name || 'Someone';
-      if (p) { p.fadeOut(stage); stateRef.current.players.delete(userId); }
+      if (p) { p.fadeOut(stage, () => stateRef.current.players.delete(userId)); }
       removePlayer(userId);
       addToast({ message: `${name} left the cosmos`, type: 'leave' });
     }));
