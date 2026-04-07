@@ -47,7 +47,8 @@ const getVelocity = (currentX = 0, currentY = 0) => {
     const dy = target.y - currentY;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 5) { clearMoveTarget(); return { vx: 0, vy: 0 }; }
-    return { vx: (dx / dist) * CLICK_MOVE_SPEED, vy: (dy / dist) * CLICK_MOVE_SPEED };
+    const speed = Math.min(CLICK_MOVE_SPEED, dist);
+    return { vx: (dx / dist) * speed, vy: (dy / dist) * speed };
   }
   let vx = 0, vy = 0;
   if (keys['ArrowLeft']  || keys['KeyA']) vx -= WASD_SPEED;
