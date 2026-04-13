@@ -1,4 +1,4 @@
-# Virtual Cosmos
+# Virtual Space
 
 A 2D virtual office where users move around and chat with nearby players in real time.
 
@@ -162,8 +162,8 @@ The server runs a **20Hz game loop** (50ms tick) that broadcasts the full world 
 ### Installation
 
 ```bash
-git clone https://github.com/your-username/virtual-cosmos.git
-cd virtual-cosmos
+git clone https://github.com/your-username/virtual-space.git
+cd virtual-space
 ```
 
 **Server**
@@ -211,7 +211,7 @@ Open [http://localhost:5173](http://localhost:5173).
 ## Project Structure
 
 ```
-virtual-cosmos/
+virtual-space/
 ├── client/
 │   └── src/
 │       ├── components/     # React UI (ChatPanel, UserPanel, LocationBar, HelpModal)
