@@ -1,4 +1,4 @@
-# Virtual Space
+# ProxiChat
 
 A 2D virtual office where users move around and chat with nearby players in real time.
 
